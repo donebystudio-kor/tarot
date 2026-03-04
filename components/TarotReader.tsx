@@ -119,6 +119,7 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
   const [shared, setShared] = useState(false);
   const [savedToday, setSavedToday] = useState<SavedReading | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isShuffling, setIsShuffling] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
   const activeSubQuestion = forcedSubQuestion || subQuestion;
@@ -259,8 +260,12 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
   }, [cardCount]);
 
   const handleShuffle = () => {
-    if (selected.length > 0) return;
-    setDeck(shuffleAndPick(10));
+    if (selected.length > 0 || isShuffling) return;
+    setIsShuffling(true);
+    setTimeout(() => {
+      setDeck(shuffleAndPick(10));
+      setIsShuffling(false);
+    }, 580);
   };
 
   const handleAutoPick = () => {
@@ -418,12 +423,17 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
             {deck.map((item, idx) => {
               const isChosen = selected.some((s) => s.card.id === item.card.id);
               return (
-                <TarotCard
+                <div
                   key={item.card.id}
-                  isSelected={isChosen}
-                  isDisabled={isChosen || selected.length >= cardCount}
-                  onClick={() => handleCardPick(idx)}
-                />
+                  className={isShuffling ? "shuffle-wave" : ""}
+                  style={isShuffling ? { animationDelay: `${idx * 40}ms` } : undefined}
+                >
+                  <TarotCard
+                    isSelected={isChosen}
+                    isDisabled={isChosen || selected.length >= cardCount || isShuffling}
+                    onClick={() => handleCardPick(idx)}
+                  />
+                </div>
               );
             })}
           </div>

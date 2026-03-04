@@ -96,6 +96,18 @@ body {
   animation: fadeInUp 0.5s ease forwards;
 }
 
+/* 카드 셔플 웨이브 */
+@keyframes shuffleWave {
+  0%   { transform: translateY(0) rotate(0deg); }
+  30%  { transform: translateY(-18px) rotate(-4deg); }
+  60%  { transform: translateY(-10px) rotate(3deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+.shuffle-wave {
+  animation: shuffleWave 0.55s ease forwards;
+}
+
 /* 스크롤바 */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #1A1A35; }
