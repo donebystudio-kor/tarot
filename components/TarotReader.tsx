@@ -258,6 +258,18 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
     setSubQuestion("");
   }, [cardCount]);
 
+  const handleShuffle = () => {
+    if (selected.length > 0) return;
+    setDeck(shuffleAndPick(10));
+  };
+
+  const handleAutoPick = () => {
+    if (selected.length > 0) return;
+    const autoPicked = shuffleAndPick(cardCount);
+    setSelected(autoPicked);
+    setTimeout(() => startReading(autoPicked), 300);
+  };
+
   const handleCopy = () => {
     navigator.clipboard.writeText(reading).then(() => {
       setCopied(true);
@@ -426,6 +438,25 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
               />
             ))}
           </div>
+
+          {selected.length === 0 && (
+            <div className="flex justify-center gap-3 mt-6">
+              <button
+                onClick={handleShuffle}
+                className="px-5 py-2 border border-[#2D2D5E] text-[#8888AA] rounded-full text-xs
+                  hover:border-[#C9A96E]/50 hover:text-[#C9A96E] transition-all duration-200"
+              >
+                🔀 셔플
+              </button>
+              <button
+                onClick={handleAutoPick}
+                className="px-5 py-2 border border-[#2D2D5E] text-[#8888AA] rounded-full text-xs
+                  hover:border-[#C9A96E]/50 hover:text-[#C9A96E] transition-all duration-200"
+              >
+                ✦ 자동 뽑기
+              </button>
+            </div>
+          )}
         </div>
       )}
 
