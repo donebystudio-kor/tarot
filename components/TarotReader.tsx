@@ -158,8 +158,12 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
   }, [isLoading, reading]);
 
   const handleCardPick = (idx: number) => {
+    // 이미 선택된 카드 클릭 시 취소
+    if (selected.some((s) => s.card.id === deck[idx].card.id)) {
+      setSelected((prev) => prev.filter((s) => s.card.id !== deck[idx].card.id));
+      return;
+    }
     if (selected.length >= cardCount) return;
-    if (selected.some((s) => s.card.id === deck[idx].card.id)) return;
     const newSelected = [...selected, deck[idx]];
     setSelected(newSelected);
     if (newSelected.length === cardCount) {
@@ -430,7 +434,7 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
                 >
                   <TarotCard
                     isSelected={isChosen}
-                    isDisabled={isChosen || selected.length >= cardCount || isShuffling}
+                    isDisabled={(!isChosen && selected.length >= cardCount) || isShuffling}
                     onClick={() => handleCardPick(idx)}
                   />
                 </div>
