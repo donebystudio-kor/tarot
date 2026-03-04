@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
-import { MAJOR_ARCANA, THEMES, POSITIONS, TarotCard as TarotCardType } from "@/constants/tarot";
+import { MAJOR_ARCANA, THEMES, TarotCard as TarotCardType } from "@/constants/tarot";
 import TarotCard from "@/components/TarotCard";
 import TypewriterText from "@/components/TypewriterText";
 
@@ -118,6 +118,8 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [savedToday, setSavedToday] = useState<SavedReading | null>(null);
+  const [saving, setSaving] = useState(false);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   const activeSubQuestion = forcedSubQuestion || subQuestion;
   const selectedTheme = THEMES.find((t) => t.id === theme);
@@ -261,6 +263,28 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const handleSaveImage = async () => {
+    if (!shareCardRef.current || saving) return;
+    setSaving(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(shareCardRef.current, {
+        backgroundColor: "#0D0D1E",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      link.download = "tarot-done.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch {
+      // 실패 시 무시
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleShare = async () => {
@@ -423,7 +447,7 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
                   card={item.card}
                   isReversed={item.isReversed}
                   isFlipped={flipped[i]}
-                  position={cardCount > 1 ? POSITIONS[i] : undefined}
+                  position={cardCount > 1 ? activePositions[i] : undefined}
                 />
                 {flipped[i] && (
                   <Link
@@ -454,29 +478,106 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
           </div>
 
           {!isLoading && reading && (
-            <div className="flex justify-center gap-3 mt-8 fade-in-up flex-wrap">
-              <button
-                onClick={handleShare}
-                className="px-6 py-3 border border-[#2D2D5E] text-[#8888AA] rounded-full
-                  hover:border-[#C9A96E]/50 hover:text-[#C9A96E] transition-all duration-200 text-sm"
-              >
-                {shared ? "✦ 링크 복사됨!" : "공유하기"}
-              </button>
-              <button
-                onClick={handleCopy}
-                className="px-6 py-3 border border-[#2D2D5E] text-[#8888AA] rounded-full
-                  hover:border-[#C9A96E]/50 hover:text-[#C9A96E] transition-all duration-200 text-sm"
-              >
-                {copied ? "✦ 복사됨!" : "결과 복사"}
-              </button>
-              <button
-                onClick={handleReset}
-                className="px-8 py-3 border border-[#C9A96E] text-[#C9A96E] rounded-full
-                  hover:bg-[#C9A96E] hover:text-[#0D0D1E] transition-all duration-200 text-sm tracking-wider"
-              >
-                ✦ 다시 뽑기
-              </button>
-            </div>
+            <>
+              {/* 이미지 저장용 숨겨진 카드 */}
+              <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+                <div
+                  ref={shareCardRef}
+                  style={{
+                    width: "400px",
+                    background: "#0D0D1E",
+                    padding: "40px 32px 32px",
+                    fontFamily: "sans-serif",
+                    border: "1px solid #2D2D5E",
+                    borderRadius: "20px",
+                  }}
+                >
+                  {/* 헤더 */}
+                  <div style={{ textAlign: "center", marginBottom: "24px" }}>
+                    <p style={{ color: "#C9A96E", fontSize: "11px", letterSpacing: "4px", marginBottom: "6px" }}>✦ TAROT DONE · 타로던 ✦</p>
+                    <p style={{ color: "#E8E8FF", fontSize: "15px", marginBottom: "4px" }}>
+                      {themeEmoji || selectedTheme?.emoji} {themeLabel || selectedTheme?.label}
+                    </p>
+                    {activeSubQuestion && (
+                      <p style={{ color: "#8888AA", fontSize: "12px" }}>"{activeSubQuestion}"</p>
+                    )}
+                  </div>
+
+                  {/* 카드 목록 */}
+                  <div style={{ display: "flex", justifyContent: "center", gap: "16px", marginBottom: "24px" }}>
+                    {selected.map((item, i) => (
+                      <div key={item.card.id} style={{ textAlign: "center", flex: 1 }}>
+                        {cardCount > 1 && (
+                          <p style={{ color: "#C9A96E", fontSize: "9px", letterSpacing: "1px", marginBottom: "8px" }}>
+                            {activePositions[i]}
+                          </p>
+                        )}
+                        <div style={{
+                          background: "#1A1A35",
+                          border: "1.5px solid #C9A96E",
+                          borderRadius: "10px",
+                          padding: "12px 8px",
+                          transform: item.isReversed ? "rotate(180deg)" : "none",
+                        }}>
+                          <div style={{ fontSize: "22px", marginBottom: "6px" }}>{item.card.symbol}</div>
+                          <p style={{ color: "#C9A96E", fontSize: "10px", fontWeight: "600" }}>{item.card.nameKo}</p>
+                          {item.isReversed && <p style={{ color: "#8888AA", fontSize: "8px", marginTop: "2px" }}>역방향</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 리딩 텍스트 */}
+                  <div style={{
+                    background: "#1A1A35",
+                    border: "1px solid #2D2D5E",
+                    borderRadius: "12px",
+                    padding: "20px",
+                    marginBottom: "20px",
+                  }}>
+                    <p style={{ color: "#C9A96E", fontSize: "9px", letterSpacing: "3px", marginBottom: "12px" }}>✦ 카드의 메시지</p>
+                    <p style={{ color: "#E8E8FF", fontSize: "12px", lineHeight: "1.8", whiteSpace: "pre-wrap" }}>
+                      {reading.length > 300 ? reading.slice(0, 300) + "..." : reading}
+                    </p>
+                  </div>
+
+                  {/* 푸터 */}
+                  <p style={{ color: "#2D2D5E", fontSize: "10px", textAlign: "center" }}>tarot-done.vercel.app</p>
+                </div>
+              </div>
+
+              <div className="flex justify-center gap-3 mt-8 fade-in-up flex-wrap">
+                <button
+                  onClick={handleSaveImage}
+                  disabled={saving}
+                  className="px-6 py-3 border border-[#2D2D5E] text-[#8888AA] rounded-full
+                    hover:border-[#C9A96E]/50 hover:text-[#C9A96E] transition-all duration-200 text-sm disabled:opacity-50"
+                >
+                  {saving ? "저장 중..." : "이미지 저장"}
+                </button>
+                <button
+                  onClick={handleShare}
+                  className="px-6 py-3 border border-[#2D2D5E] text-[#8888AA] rounded-full
+                    hover:border-[#C9A96E]/50 hover:text-[#C9A96E] transition-all duration-200 text-sm"
+                >
+                  {shared ? "✦ 링크 복사됨!" : "공유하기"}
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="px-6 py-3 border border-[#2D2D5E] text-[#8888AA] rounded-full
+                    hover:border-[#C9A96E]/50 hover:text-[#C9A96E] transition-all duration-200 text-sm"
+                >
+                  {copied ? "✦ 복사됨!" : "결과 복사"}
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="px-8 py-3 border border-[#C9A96E] text-[#C9A96E] rounded-full
+                    hover:bg-[#C9A96E] hover:text-[#0D0D1E] transition-all duration-200 text-sm tracking-wider"
+                >
+                  ✦ 다시 뽑기
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}
