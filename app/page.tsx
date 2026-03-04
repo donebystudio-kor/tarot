@@ -46,9 +46,18 @@ export default function Home() {
         </div>
       </div>
 
-      <footer className="relative z-10 mt-16 text-center text-xs">
+      {/* SEO 텍스트 */}
+      <div className="relative z-10 w-full max-w-md mt-12 text-center">
+        <p className="text-[#2D2D5E] text-xs leading-6">
+          타로던은 AI가 해석하는 무료 타로카드 사이트입니다. 오늘의 운세, 연애운, 직장운, 학업운을 메이저 아르카나 22장으로 확인해보세요.
+          <Link href="/guide" className="text-[#C9A96E]/40 hover:text-[#C9A96E] ml-1 transition-colors">타로카드 가이드 →</Link>
+        </p>
+      </div>
+
+      <footer className="relative z-10 mt-8 text-center text-xs">
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-6 text-[#8888AA]">
           <Link href="/cards" className="hover:text-[#C9A96E] transition-colors">타로 카드 해석</Link>
+          <Link href="/guide" className="hover:text-[#C9A96E] transition-colors">타로 가이드</Link>
           <Link href="/privacy" className="hover:text-[#C9A96E] transition-colors">개인정보처리방침</Link>
         </div>
         <p className="text-[#2D2D5E]">타로는 재미와 영감을 위한 것입니다 · © 2026 Tarot Done</p>
