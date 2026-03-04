@@ -265,7 +265,7 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
     setTimeout(() => {
       setDeck(shuffleAndPick(10));
       setIsShuffling(false);
-    }, 580);
+    }, 950); // 카드 9장 * 40ms 딜레이 + 550ms 애니메이션
   };
 
   const handleAutoPick = () => {
