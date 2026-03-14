@@ -57,6 +57,7 @@ export default function Home() {
       <footer className="relative z-10 mt-8 text-center text-xs">
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-6 text-[#8888AA]">
           <Link href="/cards" className="hover:text-[#C9A96E] transition-colors">타로 카드 해석</Link>
+          <Link href="/diary" className="hover:text-[#C9A96E] transition-colors">타로 일기</Link>
           <Link href="/guide" className="hover:text-[#C9A96E] transition-colors">타로 가이드</Link>
           <Link href="/privacy" className="hover:text-[#C9A96E] transition-colors">개인정보처리방침</Link>
         </div>

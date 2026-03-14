@@ -1,14 +1,14 @@
 import type { MetadataRoute } from "next";
-import { MAJOR_ARCANA } from "@/constants/tarot";
+import { ALL_CARDS } from "@/constants/tarot";
 
 const BASE_URL = "https://tarot-sigma-wheat.vercel.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const cardPages = MAJOR_ARCANA.map((card) => ({
+  const cardPages = ALL_CARDS.map((card) => ({
     url: `${BASE_URL}/cards/${card.slug}`,
     lastModified: new Date(),
     changeFrequency: "monthly" as const,
-    priority: 0.7,
+    priority: card.id <= 21 ? 0.7 : 0.6,
   }));
 
   return [
@@ -59,6 +59,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/diary`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.6,
     },
     {
       url: `${BASE_URL}/privacy`,

@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     study_flow: "학업운 - 공부 흐름",
     study_path: "학업운 - 진로·선택",
     yesno: "YES or NO 질문",
+    advice: "마이너 카드 조언",
   };
 
   // 세부 질문별 맞춤 3카드 포지션
@@ -137,7 +138,15 @@ export async function POST(req: NextRequest) {
     )
     .join("\n");
 
-  const prompt = cards.length === 1
+  const prompt = theme === "advice"
+    ? `타로 리더로서 아래 마이너 아르카나 카드로 실질적인 조언을 해주세요.
+인사말 없이 바로 조언부터 시작하세요. 편안하고 따뜻한 말투로 "~요" 체를 사용해 주세요.
+${subQuestion ? `질문: "${subQuestion}"\n` : ""}
+${cardDesc}
+
+이 카드의 에너지를 바탕으로 구체적이고 실질적인 조언을 3~4문장으로 전해주세요.
+전체 200자 내외.`
+    : cards.length === 1
     ? `타로 리더로서 아래 카드를 해석해 주세요.
 인사말, 자기소개, "오늘의 타로 리딩을 시작할게요" 같은 말 없이 바로 카드 해석부터 시작하세요.
 편안하고 따뜻한 말투로, "~요" 체를 사용해 주세요.

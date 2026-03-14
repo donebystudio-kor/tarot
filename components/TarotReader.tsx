@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { MAJOR_ARCANA, THEMES, TarotCard as TarotCardType } from "@/constants/tarot";
+import { MAJOR_ARCANA, MINOR_ARCANA, THEMES, TarotCard as TarotCardType } from "@/constants/tarot";
 import TarotCard from "@/components/TarotCard";
 import TypewriterText from "@/components/TypewriterText";
+import { saveDiaryEntry } from "@/services/diary";
 
 interface SelectedCard {
   card: TarotCardType;
@@ -109,18 +110,18 @@ const QUESTION_POSITIONS: Record<string, [string, string, string]> = {
 
 export default function TarotReader({ theme, questions, themeLabel, themeEmoji, cardCount = 3, forcedSubQuestion }: Props) {
   const [step, setStep] = useState<"pick" | "result">("pick");
-  const [deck, setDeck] = useState<SelectedCard[]>(() => shuffleAndPick(10));
+  const [deck, setDeck] = useState<SelectedCard[]>(() => shuffleAndPick(12));
   const [selected, setSelected] = useState<SelectedCard[]>([]);
   const [flipped, setFlipped] = useState<boolean[]>(Array(cardCount).fill(false));
   const [reading, setReading] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [subQuestion, setSubQuestion] = useState("");
   const [copied, setCopied] = useState(false);
-  const [shared, setShared] = useState(false);
   const [savedToday, setSavedToday] = useState<SavedReading | null>(null);
-  const [saving, setSaving] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
-  const shareCardRef = useRef<HTMLDivElement>(null);
+  const [minorAdvice, setMinorAdvice] = useState<{ card: TarotCardType; isReversed: boolean; reading: string } | null>(null);
+  const [minorLoading, setMinorLoading] = useState(false);
+  const [diarySaved, setDiarySaved] = useState(false);
 
   const activeSubQuestion = forcedSubQuestion || subQuestion;
   const selectedTheme = THEMES.find((t) => t.id === theme);
@@ -257,17 +258,19 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
   const handleReset = useCallback(() => {
     setStep("pick");
     setSelected([]);
-    setDeck(shuffleAndPick(10));
+    setDeck(shuffleAndPick(12));
     setFlipped(Array(cardCount).fill(false));
     setReading("");
     setSubQuestion("");
+    setMinorAdvice(null);
+    setDiarySaved(false);
   }, [cardCount]);
 
   const handleShuffle = () => {
     if (selected.length > 0 || isShuffling) return;
     setIsShuffling(true);
     setTimeout(() => {
-      setDeck(shuffleAndPick(10));
+      setDeck(shuffleAndPick(12));
       setIsShuffling(false);
     }, 950); // 카드 9장 * 40ms 딜레이 + 550ms 애니메이션
   };
@@ -286,43 +289,69 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
     });
   };
 
-  const handleSaveImage = async () => {
-    if (!shareCardRef.current || saving) return;
-    setSaving(true);
+  const handleMinorAdvice = async () => {
+    if (minorLoading || minorAdvice) return;
+    setMinorLoading(true);
+    const shuffled = [...MINOR_ARCANA].sort(() => Math.random() - 0.5);
+    const card = shuffled[0];
+    const isReversed = Math.random() > 0.7;
     try {
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(shareCardRef.current, {
-        backgroundColor: "#0D0D1E",
-        scale: 2,
-        useCORS: true,
-        logging: false,
+      const res = await fetch("/api/reading", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cards: [{ name: card.name, nameKo: card.nameKo, isReversed }],
+          theme: "advice",
+          subQuestion: activeSubQuestion || undefined,
+        }),
       });
-      const link = document.createElement("a");
-      link.download = "tarot-done.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      if (!res.ok || !res.body) {
+        setMinorAdvice({ card, isReversed, reading: "카드가 잠시 말을 잃었어요." });
+        setMinorLoading(false);
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        full += decoder.decode(value, { stream: true });
+        setMinorAdvice({ card, isReversed, reading: full });
+      }
     } catch {
-      // 실패 시 무시
+      setMinorAdvice({ card, isReversed, reading: "카드가 잠시 말을 잃었어요." });
     } finally {
-      setSaving(false);
+      setMinorLoading(false);
     }
   };
 
-  const handleShare = async () => {
-    const cardNames = selected.map((s) => `${s.card.nameKo}${s.isReversed ? "(역)" : ""}`).join(", ");
-    const preview = reading.slice(0, 80) + (reading.length > 80 ? "..." : "");
-    const url = window.location.href;
-    const text = `🔮 타로가 전하는 메시지\n\n카드: ${cardNames}\n\n${preview}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "타로던 — 타로 결과", text, url });
-      } catch {}
-    } else {
-      await navigator.clipboard.writeText(`${text}\n\n👉 ${url}`);
-      setShared(true);
-      setTimeout(() => setShared(false), 2000);
-    }
+  const handleSaveDiary = () => {
+    if (diarySaved) return;
+    saveDiaryEntry({
+      date: new Date().toISOString(),
+      theme: themeLabel || selectedTheme?.label || theme,
+      themeEmoji: themeEmoji || selectedTheme?.emoji || "🔮",
+      subQuestion: activeSubQuestion,
+      cards: selected.map((s) => ({
+        id: s.card.id,
+        nameKo: s.card.nameKo,
+        slug: s.card.slug,
+        symbol: s.card.symbol,
+        isReversed: s.isReversed,
+      })),
+      reading,
+      minorAdvice: minorAdvice ? {
+        id: minorAdvice.card.id,
+        nameKo: minorAdvice.card.nameKo,
+        slug: minorAdvice.card.slug,
+        symbol: minorAdvice.card.symbol,
+        isReversed: minorAdvice.isReversed,
+        reading: minorAdvice.reading,
+      } : undefined,
+    });
+    setDiarySaved(true);
+    setTimeout(() => setDiarySaved(false), 2000);
   };
 
   const handleRestoreSaved = () => {
@@ -380,7 +409,7 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
                       if (selected.length > 0) {
                         setStep("pick");
                         setSelected([]);
-                        setDeck(shuffleAndPick(10));
+                        setDeck(shuffleAndPick(12));
                         setFlipped(Array(cardCount).fill(false));
                         setReading("");
                       }
@@ -524,88 +553,53 @@ export default function TarotReader({ theme, questions, themeLabel, themeEmoji, 
 
           {!isLoading && reading && (
             <>
-              {/* 이미지 저장용 숨겨진 카드 */}
-              <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
-                <div
-                  ref={shareCardRef}
-                  style={{
-                    width: "400px",
-                    background: "#0D0D1E",
-                    padding: "40px 32px 32px",
-                    fontFamily: "sans-serif",
-                    border: "1px solid #2D2D5E",
-                    borderRadius: "20px",
-                  }}
-                >
-                  {/* 헤더 */}
-                  <div style={{ textAlign: "center", marginBottom: "24px" }}>
-                    <p style={{ color: "#C9A96E", fontSize: "11px", letterSpacing: "4px", marginBottom: "6px" }}>✦ TAROT DONE · 타로던 ✦</p>
-                    <p style={{ color: "#E8E8FF", fontSize: "15px", marginBottom: "4px" }}>
-                      {themeEmoji || selectedTheme?.emoji} {themeLabel || selectedTheme?.label}
-                    </p>
-                    {activeSubQuestion && (
-                      <p style={{ color: "#8888AA", fontSize: "12px" }}>"{activeSubQuestion}"</p>
-                    )}
-                  </div>
-
-                  {/* 카드 목록 */}
-                  <div style={{ display: "flex", justifyContent: "center", gap: "16px", marginBottom: "24px" }}>
-                    {selected.map((item, i) => (
-                      <div key={item.card.id} style={{ textAlign: "center", flex: 1 }}>
-                        {cardCount > 1 && (
-                          <p style={{ color: "#C9A96E", fontSize: "9px", letterSpacing: "1px", marginBottom: "8px" }}>
-                            {activePositions[i]}
-                          </p>
-                        )}
-                        <div style={{
-                          background: "#1A1A35",
-                          border: "1.5px solid #C9A96E",
-                          borderRadius: "10px",
-                          padding: "12px 8px",
-                          transform: item.isReversed ? "rotate(180deg)" : "none",
-                        }}>
-                          <div style={{ fontSize: "22px", marginBottom: "6px" }}>{item.card.symbol}</div>
-                          <p style={{ color: "#C9A96E", fontSize: "10px", fontWeight: "600" }}>{item.card.nameKo}</p>
-                          {item.isReversed && <p style={{ color: "#8888AA", fontSize: "8px", marginTop: "2px" }}>역방향</p>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* 리딩 텍스트 */}
-                  <div style={{
-                    background: "#1A1A35",
-                    border: "1px solid #2D2D5E",
-                    borderRadius: "12px",
-                    padding: "20px",
-                    marginBottom: "20px",
-                  }}>
-                    <p style={{ color: "#C9A96E", fontSize: "9px", letterSpacing: "3px", marginBottom: "12px" }}>✦ 카드의 메시지</p>
-                    <p style={{ color: "#E8E8FF", fontSize: "12px", lineHeight: "1.8", whiteSpace: "pre-wrap" }}>
-                      {reading.length > 300 ? reading.slice(0, 300) + "..." : reading}
-                    </p>
-                  </div>
-
-                  {/* 푸터 */}
-                  <p style={{ color: "#2D2D5E", fontSize: "10px", textAlign: "center" }}>tarot-done.vercel.app</p>
+              {/* 마이너 카드 조언 */}
+              {!minorAdvice && !minorLoading && (
+                <div className="text-center mt-6 fade-in-up">
+                  <button
+                    onClick={handleMinorAdvice}
+                    className="px-6 py-3 bg-[#1A1A35] border border-[#C9A96E]/50 text-[#C9A96E] rounded-full
+                      hover:bg-[#C9A96E] hover:text-[#0D0D1E] transition-all duration-200 text-sm"
+                  >
+                    🃏 마이너 카드로 조언 받기
+                  </button>
                 </div>
-              </div>
+              )}
+
+              {minorLoading && !minorAdvice && (
+                <div className="text-center mt-6">
+                  <span className="text-[#8888AA] text-sm animate-pulse">✦ 마이너 카드를 뽑는 중...</span>
+                </div>
+              )}
+
+              {minorAdvice && (
+                <div className="mt-6 bg-[#1A1A35] border border-[#C9A96E]/30 rounded-2xl p-6 fade-in-up">
+                  <p className="text-[#C9A96E] text-xs tracking-widest uppercase mb-3">🃏 마이너 카드의 조언</p>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">{minorAdvice.card.symbol}</span>
+                    <div>
+                      <p className="text-[#E8E8FF] text-sm font-medium">
+                        {minorAdvice.card.nameKo}
+                        {minorAdvice.isReversed && <span className="text-[#8888AA] text-xs ml-1">(역방향)</span>}
+                      </p>
+                      <p className="text-[#8888AA] text-xs">{minorAdvice.card.keywords.join(" · ")}</p>
+                    </div>
+                  </div>
+                  <TypewriterText
+                    text={minorAdvice.reading}
+                    speed={15}
+                    className="text-[#E8E8FF] text-sm leading-7 whitespace-pre-wrap"
+                  />
+                </div>
+              )}
 
               <div className="flex justify-center gap-3 mt-8 fade-in-up flex-wrap">
                 <button
-                  onClick={handleSaveImage}
-                  disabled={saving}
-                  className="px-6 py-3 border border-[#2D2D5E] text-[#8888AA] rounded-full
-                    hover:border-[#C9A96E]/50 hover:text-[#C9A96E] transition-all duration-200 text-sm disabled:opacity-50"
-                >
-                  {saving ? "저장 중..." : "이미지 저장"}
-                </button>
-                <button
-                  onClick={handleShare}
+                  onClick={handleSaveDiary}
                   className="px-6 py-3 border border-[#2D2D5E] text-[#8888AA] rounded-full
                     hover:border-[#C9A96E]/50 hover:text-[#C9A96E] transition-all duration-200 text-sm"
                 >
-                  {shared ? "✦ 링크 복사됨!" : "공유하기"}
+                  {diarySaved ? "✦ 저장됨!" : "📖 일기에 저장"}
                 </button>
                 <button
                   onClick={handleCopy}

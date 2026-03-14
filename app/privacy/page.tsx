@@ -28,6 +28,7 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc list-inside mt-3 space-y-1 text-[#8888AA]">
               <li>오늘의 타로 결과 (브라우저 LocalStorage에 저장, 서버 전송 없음)</li>
+              <li>타로 일기 기록 (브라우저 LocalStorage에 저장, 최대 50건, 서버 전송 없음)</li>
             </ul>
           </section>
 

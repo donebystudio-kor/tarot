@@ -1,19 +1,19 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { MAJOR_ARCANA } from "@/constants/tarot";
+import { ALL_CARDS } from "@/constants/tarot";
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
 export async function generateStaticParams() {
-  return MAJOR_ARCANA.map((card) => ({ slug: card.slug }));
+  return ALL_CARDS.map((card) => ({ slug: card.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const card = MAJOR_ARCANA.find((c) => c.slug === slug);
+  const card = ALL_CARDS.find((c) => c.slug === slug);
   if (!card) return {};
   return {
     title: `${card.nameKo} 타로 카드 해석 — 투데이타로`,
@@ -28,14 +28,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CardPage({ params }: Props) {
   const { slug } = await params;
-  const card = MAJOR_ARCANA.find((c) => c.slug === slug);
+  const card = ALL_CARDS.find((c) => c.slug === slug);
   if (!card) notFound();
 
-  const idx = MAJOR_ARCANA.findIndex((c) => c.slug === slug);
+  const idx = ALL_CARDS.findIndex((c) => c.slug === slug);
   const related = [
-    MAJOR_ARCANA[(idx - 1 + MAJOR_ARCANA.length) % MAJOR_ARCANA.length],
-    MAJOR_ARCANA[(idx + 1) % MAJOR_ARCANA.length],
-    MAJOR_ARCANA[(idx + 3) % MAJOR_ARCANA.length],
+    ALL_CARDS[(idx - 1 + ALL_CARDS.length) % ALL_CARDS.length],
+    ALL_CARDS[(idx + 1) % ALL_CARDS.length],
+    ALL_CARDS[(idx + 3) % ALL_CARDS.length],
   ];
 
   return (
@@ -50,7 +50,9 @@ export default async function CardPage({ params }: Props) {
         {/* 카드 헤더 */}
         <div className="text-center mb-10">
           <div className="text-6xl mb-4">{card.symbol}</div>
-          <p className="text-[#C9A96E] text-xs tracking-widest uppercase mb-1">Major Arcana · {card.id}번</p>
+          <p className="text-[#C9A96E] text-xs tracking-widest uppercase mb-1">
+            {card.id <= 21 ? `Major Arcana · ${card.id}번` : "Minor Arcana"}
+          </p>
           <h1 className="text-3xl font-bold text-[#E8E8FF] mb-1">{card.nameKo}</h1>
           <p className="text-[#8888AA] text-sm">{card.name}</p>
           <div className="flex justify-center gap-2 mt-3 flex-wrap">
