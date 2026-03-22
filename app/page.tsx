@@ -11,8 +11,19 @@ const THEME_URLS: Record<string, string> = {
 };
 
 export default function Home() {
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "타로던",
+    "url": "https://tarot-sigma-wheat.vercel.app",
+  };
+
   return (
     <main className="relative min-h-screen flex flex-col items-center px-4 py-12 z-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
       <StarBackground />
 
       <div className="relative z-10 text-center mb-12">

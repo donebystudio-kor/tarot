@@ -38,8 +38,20 @@ export default async function CardPage({ params }: Props) {
     ALL_CARDS[(idx + 3) % ALL_CARDS.length],
   ];
 
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": `${card.nameKo} 타로 카드 해석`,
+    "description": card.description,
+    "author": { "@type": "Organization", "name": "타로던" },
+  };
+
   return (
     <main className="min-h-screen bg-[#0D0D1E] px-4 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       <div className="max-w-2xl mx-auto">
 
         {/* 뒤로가기 */}
